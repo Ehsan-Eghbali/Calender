@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset='utf-8' />
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek',
+                locale: 'fa',
+                headerToolbar: {
+                    left: 'prev,next',
+                    center: 'title',
+                    right: ''
+                },
+
+                selectable: true,
+                events: {
+                    url: 'Controller/AppointmentsContrroller.php', // URL to fetch all appointments
+                    method: 'GET',
+                    success: function (response) {
+                        if (response.hasOwnProperty('message')) {
+                            console.log(response.message);
+                        }
+                        else {
+                            var appointments = response;
+                            var eventsArray = [];
+                            if (appointments.length > 0) {
+                                appointments.forEach(function (appointment) {
+                                    eventsArray.push({
+                                        id: appointment.id,
+                                        title: 'Reserved',
+                                        start: appointment.start_appointment_date,
+                                        end: appointment.end_appointment_date,
+                                        editable: false,
+                                        backgroundColor: 'gray',    
+                                    });
+                                });
+                                calendar.addEventSource(eventsArray);
+                            }
+                        }
+                    },
+                    failure: function (response) {
+                        console.error(response);
+                    }
+                },
+                select: function (info) {
+                    var selectedDate = info.startStr;
+
+                    $.ajax({
+                        url: 'Controller/AppointmentsContrroller.php',
+                        type: 'POST',
+                        data: {
+                            start_appointment_date: info.startStr,
+                            end_appointment_date: info.endStr
+                        },
+                        success: function (response) {
+                            var data = JSON.parse(response);
+
+                            if (data.hasOwnProperty('id')) {
+                                var eventId = data.id;
+
+                               
+                                calendar.addEvent({
+                                    id: eventId,
+                                    title: 'Reserved',
+                                    start: info.start,
+                                    end: info.end,
+                                    allDay: false,
+                                    editable: false,
+                                    backgroundColor: 'gray',
+                                });
+
+                            
+                                console.log('Reservation successful. Event ID: ' + eventId);
+                            } else {
+                                
+                                console.error('Error: ' + data.error);
+                            }
+                        },
+                        error: function (error) {
+                            console.error(error);
+                        }
+                    });
+
+                    
+                    calendar.unselect();
+                },
+
+                eventClick: function (info) {
+                    var cancelId = info.event.id;
+                    
+                    $.ajax({
+                        url: 'Controller/AppointmentsContrroller.php', 
+                        type: 'POST',
+                        data: {
+                            cancel_id: cancelId
+                        },
+                        success: function (response) {
+                            
+                            console.log(response);
+
+                            
+                            info.event.remove();
+                        },
+                        error: function (error) {
+                            console.error(error);
+                        }
+                    });
+                },
+            });
+
+            calendar.render();
+        });
+    </script>
+</head>
+
+<body>
+    <div id='calendar'></div>
+</body>
+
+</html>
